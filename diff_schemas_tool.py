@@ -82,15 +82,15 @@ def compareDumps(sqlFiles = [], *args):
 	        dmpsortedi = {}
             i = 0
             for dmp in [sqlFiles[0], sqlFiles[1]]:
-		    dmpsorted = dmp + '_SORTED'
-            greparg = 'CREATE ' + objectype
-            file = open(dmpsorted,'w')
-		    p1 = subprocess.Popen(["grep",greparg,dmp], stdout=subprocess.PIPE)
-	        p2 = subprocess.Popen('sort'.split(), stdin=p1.stdout, stdout=file)
-            p1.stdout.close()
-            p2.communicate()[0]
-		    p1.wait()
-            dmpsortedi[i] = dmpsorted
+		        dmpsorted = dmp + '_SORTED'
+                greparg = 'CREATE ' + objectype
+                file = open(dmpsorted,'w')
+		        p1 = subprocess.Popen(["grep",greparg,dmp], stdout=subprocess.PIPE)
+	            p2 = subprocess.Popen('sort'.split(), stdin=p1.stdout, stdout=file)
+                p1.stdout.close()
+                p2.communicate()[0]
+		        p1.wait()
+                dmpsortedi[i] = dmpsorted
             i += 1
             return dmpsortedi
 
@@ -141,9 +141,9 @@ def sendEmail():
     fp.close()
     msg['Subject'] = 'Diff Report'
     msg['From'] = 'foo@bar.com'
-    msg['To'] = 'victor.hernando@nologin.es'
-    s = smtplib.SMTP('10.34.15.30')
-    s.sendmail('foo@bar.com', ['victor.hernando@nologin.es'], msg.as_string())
+    msg['To'] = 'vhernandomartin@gmail.com'
+    s = smtplib.SMTP('localhost')
+    s.sendmail('foo@bar.com', ['vhernandomartin@gmail.com'], msg.as_string())
     s.quit()
 
 def main():
