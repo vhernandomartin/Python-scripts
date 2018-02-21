@@ -52,37 +52,35 @@ class DBConnection:
         try:
             username = self.username
             password = self.password
-	    database = self.database
+	        database = self.database
             connection = cx_Oracle.connect (username,password,database)
             ver = connection.version.split(":")
-            myPrintf ('Connected to database %s\n',database)
+	    #myPrintf ('Connected to database %s\n',database)
         except cx_Oracle.DatabaseError, exception:
-            myPrintf ('Failed to connect to %s\n',database)
+            myiPrintf ('Failed to connect to %s\n',database)
             myprintException (exception)
             exit (1)
         cursor = connection.cursor()
         return cursor
 
-    def execute_query(self, cursor):
-	#cursor = connection.cursor()
+    def execute_query(self, cursor, sql, program):
         try:
-            cursor.execute ('SELECT COUNT(*) FROM DBA_USERS')
+            #cursor.execute ('SELECT COUNT(*) FROM DBA_USERS')
+            cursor.execute (sql,program = program)
         except cx_Oracle.DatabaseError, exception:
-            myPrintf ('Failed to select from EMP\n')
+            myPrintf ('Failed to select from DBA_USERS\n')
             myprintException (exception)
             exit (1)
 
         count = cursor.fetchone ()[0]
-        print 'Users on database: ' + str(count)
-        #cursor.close ()
-        #connection.close ()
+	return count
 
     def create_user(self, cursor):
         try:
             cursor.execute ('CREATE USER DIFF0 identified by test')
-            print 'User created: DIFF0'
+	        print 'User created: DIFF0'
             cursor.execute ('CREATE USER DIFF1 identified by test')
-            print 'User created: DIFF1'
+	        print 'User created: DIFF1'
         except cx_Oracle.DatabaseError, exception:
             myPrintf ('Failed to prepare cursor\n')
             myprintException (exception)
@@ -93,7 +91,7 @@ class DBConnection:
             cursor.execute ('DROP USER DIFF0 cascade')
             print 'User Dropped: DIFF0'
             cursor.execute ('DROP USER DIFF1 cascade')
-            print 'User Dropped: DIFF1'
+	        print 'User Dropped: DIFF1'
         except cx_Oracle.DatabaseError, exception:
             myPrintf ('Failed to prepare cursor\n')
             myprintException (exception)
@@ -148,12 +146,11 @@ def generateSqlFile(schemas,objectype,dbuser,dbpassword):
             # Importing to generete sqlfiles
             impdp_args = dbuser + '/' + dbpassword + '@' + oracle_sid + ' DIRECTORY=' + dp_directory + ' DUMPFILE=' + dmpfile + ' SQLFILE=' + sqlfile + ' INCLUDE=' + objectype
             impdp_process = subprocess.Popen(["impdp", impdp_args], stdout=FNULL, stderr=subprocess.PIPE)
-            # Importing into a real schema to allow developers access into it.
+            time.sleep(30)
             impdp_args_real = dbuser + '/' + dbpassword + '@' + oracle_sid + ' DIRECTORY=' + dp_directory + ' DUMPFILE=' + dmpfile + ' REMAP_SCHEMA=' + schemas + ':' + dest_schema
-            impdp_process_real = subprocess.Popen(["impdp", impdp_args], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            impdp_process_real = subprocess.Popen(["impdp", impdp_args_real], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             sqlfilevar[i] = sqlfile
 	        i += 1
-            time.sleep(30)
         return sqlfilevar
 
 def compareDumps(sqlFiles = [], *args):
@@ -192,13 +189,13 @@ def diffDumps(sortedDmps = [], *args):
             )
             orig_stdout = sys.stdout
             for line in diff:
-		        f = open('diff_report.txt','a')
+		f = open('diff_report.txt','a')
                 #sys.stdout = open('diff_report.txt','a')
                 sys.stdout = f
                 sys.stdout.write(line)
-	        #sys.stdout.close()
-	        sys.stdout = sys.__stdout__
-	        f.close()
+	    #sys.stdout.close()
+	    sys.stdout = sys.__stdout__
+	    f.close()
 
 def cleanEnvironment():
     schemas = sys.argv[2]
@@ -216,7 +213,7 @@ def cleanEnvironment():
 def help():
     #if len(sys.argv) != 2:
     print 'Usage: ' + sys.argv[0] + ' -s <schema> -o <object_type>'
-        #sys.exit(1)
+    #sys.exit(1)
 
 def sendEmail():
     report = "diff_report.txt"
@@ -229,6 +226,19 @@ def sendEmail():
     s = smtplib.SMTP('localhost')
     s.sendmail('foo@bar.com', ['vhernandomartin@gmail.com'], msg.as_string())
     s.quit()
+
+def waitImpdp(con):
+    print "++INFO: Waiting to finish import PRE metadata Datapump..."
+    cursor = con.add_connection()
+    sql = "SELECT count(*) from v$session where program like :program"
+    program = '%DW%'
+    num = con.execute_query(cursor,sql,program)
+    #print num
+    while True:
+        num = con.execute_query(cursor,sql,program)
+        if num < 1:
+            break
+            con.close_cursor(cursor)
 
 def main():
     try:
@@ -247,11 +257,11 @@ def main():
             sys.exit(2)
         elif opt in ("-s", "--schema"):
             schemas = arg
-	elif opt in ("-o", "--object-type"):
+	    elif opt in ("-o", "--object-type"):
             objectype = arg
             # Getting Dump filenames
             getFileNames()
-            getUserPassword()
+	        getUserPassword()
             # Exporting PRE Datapump
             exportDatapump(pattern,schemas,dbuser,dbpassword)
             time.sleep(30)
@@ -259,15 +269,15 @@ def main():
             con = DBConnection(oracle_sid,dbuser,dbpassword)
             cursor = con.add_connection()
             con.drop_user(cursor)
-            con.execute_query(cursor)
             con.create_user(cursor)
-            con.execute_query(cursor)
-            con.close_cursor(cursor)
+            #con.execute_query(cursor)
             # Importing datapump into new schemas and generate sqlfiles to compare
             compareDumps(generateSqlFile(schemas,objectype,dbuser,dbpassword),objectype)
             # Diff files
 	        diffDumps(dmpsortedi)
             #sendEmail()
+	        waitImpdp(con)
+            con.close_cursor(cursor)
             cleanEnvironment()
 ## END FUNCTIONS ##
 
