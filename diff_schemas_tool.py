@@ -10,11 +10,12 @@ import glob
 import getopt
 import smtplib
 import re
+import cx_Oracle
 from email.mime.text import MIMEText
 ## END MODULES ##
 
 ## VARIABLES ##
-oracle_sid = 'PCRMLBJ'
+oracle_sid = os.environ['ORACLE_SID']
 dp_directory = 'DUMPPREPRO'
 
 dp_path = '/cluster/datapump/PREPRO'
@@ -23,6 +24,84 @@ FNULL = open(os.devnull, 'w')
 ## END VARIABLES ##
 
 ## FUNCTIONS ##
+def printf (format,*args):
+    sys.stdout.write (format % args)
+
+def printException (exception):
+    error, = exception.args
+    printf ("Error code = %s\n",error.code);
+    printf ("Error message = %s\n",error.message);
+
+class DBConnection:
+    global myPrintf
+    global myprintException
+    myPrintf = printf
+    myprintException = printException
+
+    def __init__(self, database, username, password):
+        self.database = database
+        self.username = username
+        self.password = password
+
+    def imprime(self):
+        return self.database
+        return self.username
+        return self.password
+
+    def add_connection(self):
+        try:
+            username = self.username
+            password = self.password
+	    database = self.database
+            connection = cx_Oracle.connect (username,password,database)
+            ver = connection.version.split(":")
+            myPrintf ('Connected to database %s\n',database)
+        except cx_Oracle.DatabaseError, exception:
+            myPrintf ('Failed to connect to %s\n',database)
+            myprintException (exception)
+            exit (1)
+        cursor = connection.cursor()
+        return cursor
+
+    def execute_query(self, cursor):
+	#cursor = connection.cursor()
+        try:
+            cursor.execute ('SELECT COUNT(*) FROM DBA_USERS')
+        except cx_Oracle.DatabaseError, exception:
+            myPrintf ('Failed to select from EMP\n')
+            myprintException (exception)
+            exit (1)
+
+        count = cursor.fetchone ()[0]
+        print 'Users on database: ' + str(count)
+        #cursor.close ()
+        #connection.close ()
+
+    def create_user(self, cursor):
+        try:
+            cursor.execute ('CREATE USER DIFF0 identified by test')
+            print 'User created: DIFF0'
+            cursor.execute ('CREATE USER DIFF1 identified by test')
+            print 'User created: DIFF1'
+        except cx_Oracle.DatabaseError, exception:
+            myPrintf ('Failed to prepare cursor\n')
+            myprintException (exception)
+            exit (1)
+
+    def drop_user(self, cursor):
+        try:
+            cursor.execute ('DROP USER DIFF0 cascade')
+            print 'User Dropped: DIFF0'
+            cursor.execute ('DROP USER DIFF1 cascade')
+            print 'User Dropped: DIFF1'
+        except cx_Oracle.DatabaseError, exception:
+            myPrintf ('Failed to prepare cursor\n')
+            myprintException (exception)
+            exit (1)
+
+    def close_cursor(self, cursor):
+        cursor.close ()
+
 def getFileNames():
     global schemas
     global objectype
@@ -64,12 +143,17 @@ def generateSqlFile(schemas,objectype,dbuser,dbpassword):
         sqlfilevar = {}
         i = 0
         for dmpfile in dumpfiles:
+            dest_schema = 'DIFF' + str(i)
             sqlfile = dmpfile.replace("dmp","sql")
+            # Importing to generete sqlfiles
             impdp_args = dbuser + '/' + dbpassword + '@' + oracle_sid + ' DIRECTORY=' + dp_directory + ' DUMPFILE=' + dmpfile + ' SQLFILE=' + sqlfile + ' INCLUDE=' + objectype
             impdp_process = subprocess.Popen(["impdp", impdp_args], stdout=FNULL, stderr=subprocess.PIPE)
+            # Importing into a real schema to allow developers access into it.
+            impdp_args_real = dbuser + '/' + dbpassword + '@' + oracle_sid + ' DIRECTORY=' + dp_directory + ' DUMPFILE=' + dmpfile + ' REMAP_SCHEMA=' + schemas + ':' + dest_schema
+            impdp_process_real = subprocess.Popen(["impdp", impdp_args], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             sqlfilevar[i] = sqlfile
-	    i += 1
-        time.sleep(30)
+	        i += 1
+            time.sleep(30)
         return sqlfilevar
 
 def compareDumps(sqlFiles = [], *args):
@@ -91,7 +175,7 @@ def compareDumps(sqlFiles = [], *args):
                 p2.communicate()[0]
 		        p1.wait()
                 dmpsortedi[i] = dmpsorted
-            i += 1
+                i += 1
             return dmpsortedi
 
 def diffDumps(sortedDmps = [], *args):
@@ -108,13 +192,13 @@ def diffDumps(sortedDmps = [], *args):
             )
             orig_stdout = sys.stdout
             for line in diff:
-		f = open('diff_report.txt','a')
+		        f = open('diff_report.txt','a')
                 #sys.stdout = open('diff_report.txt','a')
                 sys.stdout = f
                 sys.stdout.write(line)
-	    #sys.stdout.close()
-	    sys.stdout = sys.__stdout__
-	    f.close()
+	        #sys.stdout.close()
+	        sys.stdout = sys.__stdout__
+	        f.close()
 
 def cleanEnvironment():
     schemas = sys.argv[2]
@@ -165,10 +249,23 @@ def main():
             schemas = arg
 	elif opt in ("-o", "--object-type"):
             objectype = arg
+            # Getting Dump filenames
             getFileNames()
+            getUserPassword()
+            # Exporting PRE Datapump
             exportDatapump(pattern,schemas,dbuser,dbpassword)
             time.sleep(30)
+            # Connecting to database to create new schemas
+            con = DBConnection(oracle_sid,dbuser,dbpassword)
+            cursor = con.add_connection()
+            con.drop_user(cursor)
+            con.execute_query(cursor)
+            con.create_user(cursor)
+            con.execute_query(cursor)
+            con.close_cursor(cursor)
+            # Importing datapump into new schemas and generate sqlfiles to compare
             compareDumps(generateSqlFile(schemas,objectype,dbuser,dbpassword),objectype)
+            # Diff files
 	        diffDumps(dmpsortedi)
             #sendEmail()
             cleanEnvironment()
