@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import difflib
 import getopt
 import sys
 import cx_Oracle
@@ -62,11 +63,21 @@ def help():
 def get_all_objects(con,diff_user1,diff_user2):
     cursor = con.add_connection()
     all_object_types = ['SEQUENCE','TABLE PARTITION','QUEUE','PROCEDURE','DATABASE LINK','LOB','PACKAGE BODY','PACKAGE','TRIGGER','MATERIALIZED VIEW','TABLE','INDEX','VIEW','FUNCTION','SYNONYM','TYPE','JOB']
-    for db_user in [diff_user1,diff_user2]:
-        print 'INFO: Collecting all object_names from user: ' + db_user
-        for db_object_type in all_object_types:
-            print '\__ ' + db_user + ' - ' + db_object_type
-            con.sql_get_object_name(cursor,'OBJECT_NAME',db_user,db_object_type)
+    for db_object_type in all_object_types:
+        #print '--' + db_object_type
+        objects_output = {}
+        i = 0
+        for db_user in [diff_user1,diff_user2]:
+            #print '  \__ ' + db_user
+            object_list = con.sql_get_object_name(cursor,'OBJECT_NAME',db_user,db_object_type)
+            objects_output[i] = object_list
+            i += 1
+        return objects_output
+        diff = difflib.ndiff(objects_output[0],objects_output[1])
+        print ('\n'.join(diff))
+        #d = difflib.Differ()
+        #diff = d.compare(objects_output[0],objects_output[1])
+        #print '\n'.join(diff)
 
 def main():
     try:
