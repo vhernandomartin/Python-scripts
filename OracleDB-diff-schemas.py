@@ -49,7 +49,6 @@ class DBConnection:
             print diff_user
             try:
                 cursor.execute (sql, owner = diff_user)
-                #cursor.execute ('CREATE USER TESTUSR identified by TESTUSR')
             except cx_Oracle.DatabaseError, exception:
                 myPrintf ('Failed to prepare cursor\n')
                 myprintException (exception)
@@ -61,7 +60,7 @@ class DBConnection:
         cursor.close ()
 
 def help():
-    print 'Usage: ' + sys.argv[0] + ' -s <ORACLE_SID> -u <DB_ADM_USR> -p <DB_ADM_PWD> -d1 <DIFF_USER1> -d2 <DIFF_USER2>'
+    print 'Usage: ' + sys.argv[0] + ' -s <ORACLE_SID> -u <DB_ADM_USR> -p <DB_ADM_PWD> --diff_user1 <DIFF_USER1> --diff_user2 <DIFF_USER2>'
 
 def main():
     try:
