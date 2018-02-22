@@ -92,8 +92,6 @@ def main():
         print err
         help()
         sys.exit(2)
-    print opts
-    print args
     for opt, arg in opts:
         if len(opts) < 5:
             print 'ERROR: Missing required arguments!'
