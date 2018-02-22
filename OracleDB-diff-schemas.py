@@ -34,8 +34,6 @@ class DBConnection:
             password = self.password
 	    database = self.database
             connection = cx_Oracle.connect (username,password,database)
-            #ver = connection.version.split(":")
-            #print ver
         except cx_Oracle.DatabaseError, exception:
             myiPrintf ('Failed to connect to %s\n',database)
             myprintException (exception)
@@ -43,24 +41,32 @@ class DBConnection:
         cursor = connection.cursor()
         return cursor
 
-    def execute_query(self, cursor, diff_user1, diff_user2):
-        sql = "SELECT OBJECT_NAME FROM DBA_OBJECTS WHERE OWNER = :owner order by OBJECT_NAME"
-        for diff_user in [diff_user1, diff_user2]:
-            print diff_user
-            try:
-                cursor.execute (sql, owner = diff_user)
-            except cx_Oracle.DatabaseError, exception:
-                myPrintf ('Failed to prepare cursor\n')
-                myprintException (exception)
-                exit (1)
-            for object_name in cursor.fetchall():
-                myPrintf(" %s\n",object_name)
+    def sql_get_object_name(self, cursor, col1, owner, object_type):
+        sql = "SELECT " + col1 + " FROM DBA_OBJECTS WHERE OWNER = :owner AND OBJECT_TYPE = :object_type order by OBJECT_NAME"
+        try:
+            cursor.execute (sql, owner = owner, object_type = object_type)
+        except cx_Oracle.DatabaseError, exception:
+            myPrintf ('Failed to prepare cursor\n')
+            myprintException (exception)
+            exit (1)
+        for object_name in cursor.fetchall():
+            myPrintf(" %s;\n",object_name)
+
 
     def close_cursor(self, cursor):
         cursor.close ()
 
 def help():
     print 'Usage: ' + sys.argv[0] + ' -s <ORACLE_SID> -u <DB_ADM_USR> -p <DB_ADM_PWD> --diff_user1 <DIFF_USER1> --diff_user2 <DIFF_USER2>'
+
+def get_all_objects(con,diff_user1,diff_user2):
+    cursor = con.add_connection()
+    all_object_types = ['SEQUENCE','TABLE PARTITION','QUEUE','PROCEDURE','DATABASE LINK','LOB','PACKAGE BODY','PACKAGE','TRIGGER','MATERIALIZED VIEW','TABLE','INDEX','VIEW','FUNCTION','SYNONYM','TYPE','JOB']
+    for db_user in [diff_user1,diff_user2]:
+        print 'INFO: Collecting all object_names from user: ' + db_user
+        for db_object_type in all_object_types:
+            print '\__ ' + db_user + ' - ' + db_object_type
+            con.sql_get_object_name(cursor,'OBJECT_NAME',db_user,db_object_type)
 
 def main():
     try:
@@ -95,8 +101,8 @@ def main():
     	    con = DBConnection(sid,user,password)
             # Open new cursor on database
     	    cursor = con.add_connection()
-            # Create user function
-    	    con.execute_query(cursor,diff_user1,diff_user2)
+            get_all_objects(con,diff_user1,diff_user2)
+    	    #con.execute_query(cursor,diff_user1,diff_user2)
             # Closing database cursor
     	    con.close_cursor(cursor)
 
