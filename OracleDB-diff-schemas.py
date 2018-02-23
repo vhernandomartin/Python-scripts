@@ -50,9 +50,10 @@ class DBConnection:
             myPrintf ('Failed to prepare cursor\n')
             myprintException (exception)
             exit (1)
-        for object_name in cursor.fetchall():
-            myPrintf(" %s;\n",object_name)
-
+        object_list = cursor.fetchall()
+        return object_list
+        #for object_name in cursor.fetchall():
+        #    myPrintf(" %s;\n",object_name)
 
     def close_cursor(self, cursor):
         cursor.close ()
@@ -64,7 +65,7 @@ def get_all_objects(con,diff_user1,diff_user2):
     cursor = con.add_connection()
     all_object_types = ['SEQUENCE','TABLE PARTITION','QUEUE','PROCEDURE','DATABASE LINK','LOB','PACKAGE BODY','PACKAGE','TRIGGER','MATERIALIZED VIEW','TABLE','INDEX','VIEW','FUNCTION','SYNONYM','TYPE','JOB']
     for db_object_type in all_object_types:
-        #print '--' + db_object_type
+        print '#### ' + db_object_type + ' ####'
         objects_output = {}
         i = 0
         for db_user in [diff_user1,diff_user2]:
@@ -72,12 +73,12 @@ def get_all_objects(con,diff_user1,diff_user2):
             object_list = con.sql_get_object_name(cursor,'OBJECT_NAME',db_user,db_object_type)
             objects_output[i] = object_list
             i += 1
-        return objects_output
-        diff = difflib.ndiff(objects_output[0],objects_output[1])
-        print ('\n'.join(diff))
-        #d = difflib.Differ()
-        #diff = d.compare(objects_output[0],objects_output[1])
-        #print '\n'.join(diff)
+        diff_part1 = "\n".join(str(e) for e in objects_output[0]).replace("(","").replace(")","")
+        diff_part2 = "\n".join(str(e) for e in objects_output[1]).replace("(","").replace(")","")
+        diff_part1 = diff_part1.splitlines(1)
+        diff_part2 = diff_part2.splitlines(1)
+        diff = difflib.unified_diff(diff_part1,diff_part2, n=0)
+        print (''.join(diff))
 
 def main():
     try:
