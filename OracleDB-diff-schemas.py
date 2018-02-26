@@ -185,7 +185,6 @@ def main():
             # Open new cursor on database
     	    cursor = con.add_connection()
             get_all_objects(con,diff_user1,diff_user2)
-    	    #con.execute_query(cursor,diff_user1,diff_user2)
             # Closing database cursor
     	    con.close_cursor(cursor)
 
