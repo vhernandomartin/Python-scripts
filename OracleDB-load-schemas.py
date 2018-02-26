@@ -140,7 +140,7 @@ def generateSqlFile(schemas,dbuser,dbpassword):
             # Importing to generete sqlfiles
             impdp_args = dbuser + '/' + dbpassword + '@' + oracle_sid + ' DIRECTORY=' + dp_directory + ' DUMPFILE=' + dmpfile + ' SQLFILE=' + sqlfile
             impdp_process = subprocess.Popen(["impdp", impdp_args], stdout=FNULL, stderr=subprocess.PIPE)
-            #time.sleep(30)
+            time.sleep(30)
             impdp_args_real = dbuser + '/' + dbpassword + '@' + oracle_sid + ' DIRECTORY=' + dp_directory + ' DUMPFILE=' + dmpfile + ' REMAP_SCHEMA=' + schemas + ':' + dest_schema
             impdp_process_real = subprocess.Popen(["impdp", impdp_args_real], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	        i += 1

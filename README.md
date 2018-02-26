@@ -7,6 +7,16 @@ The following script will connect to the schemas provided as arguments and will 
 ```
 Provide *ORACLE_SID*, *DBUSER* and *DBPASSWORD* with admin privileges since DBA_ views are used, and both users to compare.
 
+#### OracleDB-load-schemas.py
+Script to import two schemas into a Oracle Database.
+The purpose of this data load is to be able to compare both schemas later.
+A dump is recolected from the same database where import will be performed, the other dump comes from other environment, PRO for example.
+It's assumed that in the same directory is already placed a dump belonging the other environment.
+```
+./OracleDB-load-schemas.py -s TESTUSR
+```
+Provide *DBUSER* to export data from this schema.
+
 #### create-drop_user_oracledb.py
 Sample script to create or delete users on Oracle database.
 ```
