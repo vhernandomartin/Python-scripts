@@ -12,6 +12,7 @@ Script to import two schemas into a Oracle Database.
 The purpose of this data load is to be able to compare both schemas later.
 A dump is recolected from the same database where import will be performed, the other dump comes from other environment, PRO for example.
 It's assumed that in the same directory is already placed a dump belonging the other environment.
+Oracle SID is picked up from your current ORACLE_SID env variable.
 ```
 ./OracleDB-load-schemas.py -s TESTUSR
 ```
