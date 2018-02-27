@@ -172,7 +172,7 @@ def main():
             sys.exit(2)
         elif opt in ("-s", "--sid"):
             sid = arg
-	elif opt in ("-u", "--user"):
+	    elif opt in ("-u", "--user"):
             user = arg
         elif opt in ("-p", "--password"):
             password = arg
