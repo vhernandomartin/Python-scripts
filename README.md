@@ -10,11 +10,12 @@ Provide *ORACLE_SID*, *DBUSER* and *DBPASSWORD* with admin privileges since DBA_
 #### OracleDB-load-schemas.py
 Script to import two schemas into a Oracle Database.
 The purpose of this data load is to be able to compare both schemas later.
-A dump is recolected from the same database where import will be performed, the other dump comes from other environment, PRO for example.
-It's assumed that in the same directory is already placed a dump belonging the other environment.
-Oracle SID is picked up from your current ORACLE_SID env variable.
+A dump is exported from database *A*, the other dump comes from other environment, database *B*, PRO for example.
+It's assumed that in the same directory is already placed a dump belonging the other environment (database *B*).
+*SOURCE_ORACLE_SID* is the ORACLE_SID belonging to source database, where tool will be connecting to do the expdp.
+*DEST_ORACLE_SID* is the database where both dumps will be imported (*A* and *B* database dumps), this database is only to store metadata.
 ```
-./OracleDB-load-schemas.py -s TESTUSR
+./OracleDB-load-schemas.py -u TSTUSR -s SOURCE_ORACLE_SID -d DEST_ORACLE_SID
 ```
 Provide *DBUSER* to export data from this schema.
 

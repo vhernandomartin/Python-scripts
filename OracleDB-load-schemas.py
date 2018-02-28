@@ -15,7 +15,6 @@ from email.mime.text import MIMEText
 ## END MODULES ##
 
 ## VARIABLES ##
-oracle_sid = os.environ['ORACLE_SID']
 dp_directory = 'DUMPPREPRO'
 
 dp_path = '/cluster/datapump/PREPRO'
@@ -100,10 +99,11 @@ class DBConnection:
     def close_cursor(self, cursor):
         cursor.close ()
 
-def getFileNames():
+def getFileNames(source_sid):
     global schemas
     global pattern
     schemas = sys.argv[2]
+    oracle_sid = source_sid
     timestring = time.strftime("%d%m%Y")
     pattern = schemas + '_' + timestring + '_' + oracle_sid + '_METADATA'
     return pattern
@@ -125,7 +125,8 @@ def exportDatapump(pattern,schemas,dbuser,dbpassword):
     expdp_args = dbuser + '/' + dbpassword + '@' + oracle_sid + ' DIRECTORY=' + dp_directory + ' SCHEMAS=' + schemas + ' CONTENT=METADATA_ONLY DUMPFILE=' + dumpfile + ' LOGFILE=' + logfile + ' EXCLUDE=STATISTICS'
     expdp_process = subprocess.Popen(["expdp", expdp_args], stdout=FNULL, stderr=subprocess.PIPE)
 
-def generateSqlFile(schemas,dbuser,dbpassword):
+def generateSqlFile(schemas,dbuser,dbpassword,dest_sid):
+    oracle_sid = dest_sid
     dumpfiles = glob.glob(schemas + '*.dmp')
 
     if len(dumpfiles) != 2:
@@ -153,7 +154,7 @@ def cleanEnvironment():
 
 def help():
     #if len(sys.argv) != 2:
-    print 'Usage: ' + sys.argv[0] + ' -s <schema>'
+    print 'Usage: ' + sys.argv[0] + ' -u <schema> -s <source_ORACLE_SID> -d <dest_ORACLE_SID>'
     #sys.exit(1)
 
 def sendEmail():
@@ -183,7 +184,7 @@ def waitImpdp(con):
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hs:", ["help", "schema=",])
+        opts, args = getopt.getopt(sys.argv[1:], "hs:s:d:", ["help", "schema=", "source_sid=", "dest_sid=", ])
         if not opts:
             print 'No options supplied'
             help()
@@ -196,13 +197,18 @@ def main():
         if opt in ("-h", "--help"):
             help()
             sys.exit(2)
-        elif opt in ("-s", "--schema"):
+        elif opt in ("-u", "--user_schema"):
             schemas = arg
+        elif opt in ("-s", "--source_sid"):
+            source_sid = arg
+        elif opt in ("-d", "--dest_sid"):
+            dest_sid = arg
+
             # Getting Dump filenames
-            getFileNames()
+            getFileNames(source_sid)
 	        getUserPassword()
             # Exporting PRE Datapump
-            exportDatapump(pattern,schemas,dbuser,dbpassword)
+            exportDatapump(pattern,schemas,dbuser,dbpassword,source_sid)
             time.sleep(30)
             # Connecting to database to create new schemas
             con = DBConnection(oracle_sid,dbuser,dbpassword)
@@ -211,7 +217,7 @@ def main():
             con.create_user(cursor)
             #con.execute_query(cursor)
             # Importing datapump into new schemas and generate sqlfiles to compare
-            generateSqlFile(schemas,dbuser,dbpassword)
+            generateSqlFile(schemas,dbuser,dbpassword,dest_sid)
             #sendEmail()
 	        waitImpdp(con)
             con.close_cursor(cursor)
