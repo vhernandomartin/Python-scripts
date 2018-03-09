@@ -122,7 +122,7 @@ def exportDatapump(pattern,schemas,dbuser,dbpassword):
     dumpfile = pattern + '.dmp'
     logfile = pattern + '.log'
     print "++INFO: Exporting PRE metadata Datapump..."
-    expdp_args = dbuser + '/' + dbpassword + '@' + oracle_sid + ' DIRECTORY=' + dp_directory + ' SCHEMAS=' + schemas + ' CONTENT=METADATA_ONLY DUMPFILE=' + dumpfile + ' LOGFILE=' + logfile + ' EXCLUDE=STATISTICS'
+    expdp_args = dbuser + '/' + dbpassword + '@' + oracle_sid + ' DIRECTORY=' + dp_directory + ' SCHEMAS=' + schemas + ' CONTENT=METADATA_ONLY DUMPFILE=' + dumpfile + ' LOGFILE=' + logfile + ' EXCLUDE=STATISTICS,DB_LINK'
     expdp_process = subprocess.Popen(["expdp", expdp_args], stdout=FNULL, stderr=subprocess.PIPE)
 
 def generateSqlFile(schemas,dbuser,dbpassword,dest_sid):
